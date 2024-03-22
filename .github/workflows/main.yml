@@ -1,0 +1,51 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+env:
+  GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
+        python-version: [3.x]
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile Python code to executable
+        run: pyinstaller --paths=$(python -c "import site; print(site.getsitepackages())") --onefile main.py -n student_test
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }} Local Gradescope
+          path: dist
+      - name: Zip up output
+        if: runner.os == 'Windows'
+        run: |
+          cd dist
+          Compress-Archive -Path . -DestinationPath ../LocalGradescope-${{ runner.os }}-${{ github.ref_name }}.zip
+      - name: Zip up output
+        if: runner.os != 'Windows'
+        run: |
+          cd dist
+          zip -r ../LocalGradescope-${{ runner.os }}-${{ github.ref_name }}.zip *
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ env.GIT_ACCESS_TOKEN }}
+          files: LocalGradescope-${{ runner.os }}-${{ github.ref_name }}.zip

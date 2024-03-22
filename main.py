@@ -8,7 +8,8 @@ init()
 
 # Define constants
 TESTS_JSON_FILE_NAME = "student_tests.json"
-
+STDOUT = 0
+STDERR = 1
 
 # Maximal virtual memory for subprocesses (in bytes).
 MAX_VIRTUAL_MEMORY = os.environ.get('LOCAL_GRADESCOPE_MEM_LIMIT', '1048576')  # 1 MB
@@ -42,14 +43,19 @@ def print_failed_test(test_name, expected_output, actual_output):
 def run_test(executable_path, test):
     name = test["name"]
     input_data = test["input"].encode()
-    output_data = test["output"]
-    output_data = normalize_newlines(output_data)
+    output_data = normalize_newlines(test["output"])
 
     actual_output = ''
     try:
-        result = subprocess.run(executable_path, input=input_data, shell=True, check=True, stdout=subprocess.PIPE,
-                                timeout=TIMEOUT)
-        actual_output = normalize_newlines(result.stdout.decode('utf-8'))
+        proc = subprocess.Popen(executable_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        try:
+            result = proc.communicate(input=input_data, timeout=TIMEOUT)[STDOUT]
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            result = proc.communicate()
+            # Try using stderr or fallback to stdout
+            result = result[STDERR] if result[STDERR] else result[STDOUT]
+        actual_output = normalize_newlines(result.decode('utf-8'))
     except subprocess.CalledProcessError as e:
         print("Error running command:", e)
         return False
