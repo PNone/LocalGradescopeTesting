@@ -1,60 +1,55 @@
 import os
 import subprocess
 import json
-import psutil
+from colorama import init, Fore
 
+# Initialize colorama for cross-platform terminal coloring
+init()
 
 # Define constants
 TESTS_JSON_FILE_NAME = "student_tests.json"
 
 
 # Maximal virtual memory for subprocesses (in bytes).
-MAX_VIRTUAL_MEMORY = os.environ.get('LOCAL_GRADESCOPE_MEM_LIMIT', '1048576') # 1 MB
+MAX_VIRTUAL_MEMORY = os.environ.get('LOCAL_GRADESCOPE_MEM_LIMIT', '1048576')  # 1 MB
+TIMEOUT = int(os.environ.get('LOCAL_GRADESCOPE_TIMEOUT', '1'))  # 1 second
 
 
 def print_divider():
-    print("\n\033[0;36m------------------------------------------------------------\033[0m\n")
+    print(f"\n{Fore.CYAN}------------------------------------------------------------{Fore.RESET}\n")
+
+
+def normalize_newlines(txt):
+    return txt.replace('\r\n', '\n').replace('\r', '\n')
 
 
 def print_tests_summary(failed_count):
     print_divider()
     if failed_count == 0:
-        print("\n\033[1;32mAll Tests Passed! \033[0m\n")
+        print(f"\n{Fore.GREEN}All Tests Passed! {Fore.RESET}\n")
     else:
         print(
-            "\n\033[1;31m{} {} Failed!\033[0m\n\n".format(
-                failed_count, "Test" if failed_count == 1 else "Tests"
-            )
+            f"{Fore.RED}{failed_count} {'Test' if failed_count == 1 else 'Tests'} Failed!{Fore.RESET}\n\n"
         )
 
 
 def print_failed_test(test_name, expected_output, actual_output):
-    print("\n\033[1;31m{} - Failed!\033[0m\n".format(test_name))
-    print("\033[1;34mExpected Output: \033[0m")
-    print(expected_output)
-    print("\033[1;34mActual Output: \033[0m")
-    print(actual_output)
+    print(f"\n{Fore.RED}{test_name} - Failed!{Fore.RESET}\n")
+    print(f"{Fore.BLUE}Expected Output:\n{Fore.RESET}{expected_output}\n")
+    print(f"{Fore.BLUE}Actual Output:\n{Fore.RESET}{actual_output}\n")
 
 
 def run_test(executable_path, test):
     name = test["name"]
-    input_data = test["input"]
+    input_data = test["input"].encode()
     output_data = test["output"]
+    output_data = normalize_newlines(output_data)
 
-    timeout = os.environ.get('LOCAL_GRADESCOPE_TIMEOUT', '4')
-    timeout = int(timeout)
-
-    command_str = "{0}".format(
-        executable_path
-    )
     actual_output = ''
     try:
-        # Set memory limit
-        psutil.Process().rlimit(psutil.RLIMIT_AS, (MAX_VIRTUAL_MEMORY, MAX_VIRTUAL_MEMORY))
-
-        result = subprocess.run(command_str, input=input_data, shell=True, check=True, stdout=subprocess.PIPE,
-                                timeout=timeout)
-        actual_output = result.stdout.decode('utf-8')
+        result = subprocess.run(executable_path, input=input_data, shell=True, check=True, stdout=subprocess.PIPE,
+                                timeout=TIMEOUT)
+        actual_output = normalize_newlines(result.stdout.decode('utf-8'))
     except subprocess.CalledProcessError as e:
         print("Error running command:", e)
         return False
@@ -65,9 +60,16 @@ def run_test(executable_path, test):
 
     print_divider()
     if actual_output == output_data:
-        print("\n\033[1;32m{} - Passed! \033[0m\n".format(name))
+        print(f"\n{Fore.GREEN}{name} - Passed! {Fore.RESET}\n")
         return True
     else:
+        # if len(actual_output) < len(output_data):
+        #     print("actual too short")
+        # elif len(actual_output) > len(output_data):
+        #     print(f"actual too long by: {len(actual_output) - len(output_data)}")
+        # for i in range(min(len(actual_output), len(output_data)) - 1):
+        #     if actual_output[i] != output_data[i]:
+        #         print(f"actual[{i}]: {actual_output[i]}, {ord(actual_output[i])}. expected[{i}]: {output_data[i]}, {ord(output_data[i])}")
         print_failed_test(name, output_data, actual_output)
         return False
 
@@ -75,7 +77,7 @@ def run_test(executable_path, test):
 def get_all_tests_from_json(workdir):
     tests_file_path = os.path.join(workdir, TESTS_JSON_FILE_NAME)
     try:
-        with open(tests_file_path, "r") as file:
+        with open(tests_file_path, "r", encoding='utf-8') as file:
             json_data = json.load(file)
             return json_data["tests"]
     except (IOError, json.JSONDecodeError) as e:
@@ -89,9 +91,7 @@ def main():
     # Expect 3 args: script name, workdir, executable path
     if len(sys.argv) != 3:
         print(
-            "Bad Usage of local tester, make sure project folder and name are passed properly. Total args passed: {}".format(
-                len(sys.argv)
-            )
+            f"Bad Usage of local tester, make sure project folder and name are passed properly. Total args passed: {len(sys.argv)}"
         )
         return
 
