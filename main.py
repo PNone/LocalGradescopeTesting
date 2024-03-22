@@ -63,13 +63,6 @@ def run_test(executable_path, test):
         print(f"\n{Fore.GREEN}{name} - Passed! {Fore.RESET}\n")
         return True
     else:
-        # if len(actual_output) < len(output_data):
-        #     print("actual too short")
-        # elif len(actual_output) > len(output_data):
-        #     print(f"actual too long by: {len(actual_output) - len(output_data)}")
-        # for i in range(min(len(actual_output), len(output_data)) - 1):
-        #     if actual_output[i] != output_data[i]:
-        #         print(f"actual[{i}]: {actual_output[i]}, {ord(actual_output[i])}. expected[{i}]: {output_data[i]}, {ord(output_data[i])}")
         print_failed_test(name, output_data, actual_output)
         return False
 
