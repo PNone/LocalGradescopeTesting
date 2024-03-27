@@ -61,6 +61,7 @@ def run_test(executable_path: str, test: dict[str, str]) -> bool:
     name = test["name"]
     input_data = test["input"].encode()
     output_data = normalize_newlines(test["output"])
+    print_divider()
 
     actual_output = ''
     try:
@@ -87,7 +88,6 @@ def run_test(executable_path: str, test: dict[str, str]) -> bool:
         print_failed_test_due_to_exception(name, output_data, str(e))
         return False
 
-    print_divider()
     if actual_output == output_data:
         print_colored_test(Fore.GREEN, f"{name} - Passed! ", "\n", "\n")
         return True
