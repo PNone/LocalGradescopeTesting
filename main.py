@@ -26,7 +26,7 @@ def print_divider() -> None:
     print(f"\n{Fore.CYAN}------------------------------------------------------------{Fore.RESET}\n")
 
 
-def print_colored_test(color: ansi.AnsiFore | str, text: str, before_text: str, after_text: str) -> None:
+def print_colored_text(color: ansi.AnsiFore | str, text: str, before_text: str, after_text: str) -> None:
     print(
         f"{before_text}{color}{text}{Fore.RESET}{after_text}"
     )
@@ -35,33 +35,39 @@ def print_colored_test(color: ansi.AnsiFore | str, text: str, before_text: str, 
 def print_tests_summary(failed_count: int) -> None:
     print_divider()
     if failed_count == 0:
-        print_colored_test(Fore.GREEN, "All Tests Passed! ", "\n", "\n")
+        print_colored_text(Fore.GREEN, "All Tests Passed! ", "\n", "\n")
     else:
         text = f"{failed_count} {'Test' if failed_count == 1 else 'Tests'} Failed!"
-        print_colored_test(Fore.RED, text, "", "\n\n")
+        print_colored_text(Fore.RED, text, "", "\n\n")
 
 
 def print_failed_test(test_name: str, expected_output: str, actual_output: str) -> None:
-    print_colored_test(Fore.RED, f"{test_name} - Failed!", "\n", "\n")
-    print_colored_test(Fore.BLUE, "Expected Output:", "", "\n")
+    print_colored_text(Fore.RED, f"{test_name} - Failed!", "\n", "\n")
+    print_colored_text(Fore.BLUE, "Expected Output:", "", "\n")
     print(f"{expected_output}\n")
-    print_colored_test(Fore.BLUE, "Actual Output:", "", "\n")
+    print_colored_text(Fore.BLUE, "Actual Output:", "", "\n")
     print(f"{actual_output}\n")
 
 
 def print_failed_test_due_to_exception(test_name: str, expected_output: str, exception: str) -> None:
-    print_colored_test(Fore.RED, f"{test_name} - Failed due to an error in the tester!", "\n", "\n")
-    print_colored_test(Fore.BLUE, "Expected Output:", "", "\n")
+    print_colored_text(Fore.RED, f"{test_name} - Failed due to an error in the tester!", "\n", "\n")
+    print_colored_text(Fore.BLUE, "Expected Output:", "", "\n")
     print(f"{expected_output}\n")
-    print_colored_test(Fore.BLUE, "Error:", "", "\n")
+    print_colored_text(Fore.BLUE, "Error:", "", "\n")
     print(f"{exception}\n")
 
 
 def run_test(executable_path: str, test: dict[str, str]) -> bool:
+    print_divider()
+    for key in ("name", "input", "output"):
+        if key not in test:
+            name = test.get("name", "<missing>")
+            print_colored_text(Fore.RED, f"Test \"{name}\": {key} missing from test object", "\n", "\n")
+            return False
+
     name = test["name"]
     input_data = test["input"].encode()
     output_data = normalize_newlines(test["output"])
-    print_divider()
 
     actual_output = ''
     try:
@@ -89,7 +95,7 @@ def run_test(executable_path: str, test: dict[str, str]) -> bool:
         return False
 
     if actual_output == output_data:
-        print_colored_test(Fore.GREEN, f"{name} - Passed! ", "\n", "\n")
+        print_colored_text(Fore.GREEN, f"{name} - Passed! ", "\n", "\n")
         return True
     else:
         print_failed_test(name, output_data, actual_output)
@@ -103,10 +109,10 @@ def get_all_tests_from_json(workdir: str) -> list[dict[str, str]] | None:
             json_data = json.load(file)
             return json_data["tests"]
     except (IOError, json.JSONDecodeError) as e:
-        print_colored_test(Fore.RED, f"Error reading JSON file: {e}", "", "")
+        print_colored_text(Fore.RED, f"Error reading JSON file: {e}", "", "")
         return None
     except Exception as e:
-        print_colored_test(Fore.RED, f"Unexpected error reading JSON file: {e}", "", "")
+        print_colored_text(Fore.RED, f"Unexpected error reading JSON file: {e}", "", "")
         return None
 
 
